@@ -1,0 +1,48 @@
+services:
+  db:
+    build: ../db
+    container_name: db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-requests_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      - net
+
+  app:
+    build: .
+    container_name: app
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-requests_db}
+      SQLITE_PATH: /usr/src/app/data/temp.db
+    ports:
+      - "3000:3000"
+    volumes:
+      - app_data:/usr/src/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - net
+
+volumes:
+  db_data:
+  app_data:
+
+networks:
+  net:
